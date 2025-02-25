@@ -1,7 +1,10 @@
-from app import db
 from datetime import datetime
+from flask_sqlalchemy import SQLAlchemy
+
+db = SQLAlchemy()
 
 class User(db.Model):
+    __tablename__ = 'users'  # Match existing table name
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
@@ -10,8 +13,9 @@ class User(db.Model):
     bookings = db.relationship('Booking', backref='user', lazy=True)
 
 class ParkingSpot(db.Model):
+    __tablename__ = 'parking_spots'  # Match existing table name
     id = db.Column(db.Integer, primary_key=True)
-    owner_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     address = db.Column(db.String(255), nullable=False)
     price_per_hour = db.Column(db.Float, nullable=False)
     description = db.Column(db.Text)
@@ -20,11 +24,12 @@ class ParkingSpot(db.Model):
     bookings = db.relationship('Booking', backref='parking_spot', lazy=True)
 
 class Booking(db.Model):
+    __tablename__ = 'bookings'  # Match existing table name
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    spot_id = db.Column(db.Integer, db.ForeignKey('parking_spot.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    spot_id = db.Column(db.Integer, db.ForeignKey('parking_spots.id'), nullable=False)
     start_time = db.Column(db.DateTime, nullable=False)
     end_time = db.Column(db.DateTime, nullable=False)
     total_price = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(20), default='pending')  # pending, confirmed, completed, cancelled
+    status = db.Column(db.String(20), default='pending')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)

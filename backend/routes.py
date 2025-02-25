@@ -45,6 +45,17 @@ def get_spots():
         'description': spot.description
     } for spot in spots]), 200
 
+@app.route('/api/spots/<int:spot_id>', methods=['GET'])
+def get_spot(spot_id):
+    spot = ParkingSpot.query.get_or_404(spot_id)
+    return jsonify({
+        'id': spot.id,
+        'address': spot.address,
+        'price_per_hour': spot.price_per_hour,
+        'description': spot.description,
+        'available': spot.available
+    }), 200
+
 @app.route('/api/spots', methods=['POST'])
 @jwt_required()
 def create_spot():
@@ -67,6 +78,45 @@ def create_spot():
         'price_per_hour': spot.price_per_hour,
         'description': spot.description
     }), 201
+
+@app.route('/api/spots/<int:spot_id>', methods=['PUT'])
+@jwt_required()
+def update_spot(spot_id):
+    current_user_id = int(get_jwt_identity())
+    spot = ParkingSpot.query.get_or_404(spot_id)
+    
+    if spot.owner_id != current_user_id:
+        return jsonify({'error': 'Not authorized'}), 403
+        
+    data = request.get_json()
+    spot.address = data.get('address', spot.address)
+    spot.price_per_hour = data.get('price_per_hour', spot.price_per_hour)
+    spot.description = data.get('description', spot.description)
+    spot.available = data.get('available', spot.available)
+    
+    db.session.commit()
+    
+    return jsonify({
+        'id': spot.id,
+        'address': spot.address,
+        'price_per_hour': spot.price_per_hour,
+        'description': spot.description,
+        'available': spot.available
+    }), 200
+
+@app.route('/api/spots/<int:spot_id>', methods=['DELETE'])
+@jwt_required()
+def delete_spot(spot_id):
+    current_user_id = int(get_jwt_identity())
+    spot = ParkingSpot.query.get_or_404(spot_id)
+    
+    if spot.owner_id != current_user_id:
+        return jsonify({'error': 'Not authorized'}), 403
+        
+    db.session.delete(spot)
+    db.session.commit()
+    
+    return jsonify({'message': 'Spot deleted successfully'}), 200
 
 # Booking routes
 @app.route('/api/bookings', methods=['POST'])
@@ -118,3 +168,32 @@ def get_user_bookings():
         'total_price': booking.total_price,
         'status': booking.status
     } for booking in bookings]), 200
+
+@app.route('/api/bookings/<int:booking_id>', methods=['PUT'])
+@jwt_required()
+def update_booking(booking_id):
+    current_user_id = int(get_jwt_identity())
+    booking = Booking.query.get_or_404(booking_id)
+    
+    if booking.user_id != current_user_id:
+        return jsonify({'error': 'Not authorized'}), 403
+        
+    data = request.get_json()
+    if 'status' in data:
+        booking.status = data['status']
+        
+        # If booking is cancelled, make the spot available again
+        if booking.status == 'cancelled':
+            spot = ParkingSpot.query.get(booking.spot_id)
+            spot.available = True
+    
+    db.session.commit()
+    
+    return jsonify({
+        'id': booking.id,
+        'spot_id': booking.spot_id,
+        'start_time': booking.start_time.isoformat(),
+        'end_time': booking.end_time.isoformat(),
+        'total_price': booking.total_price,
+        'status': booking.status
+    }), 200
