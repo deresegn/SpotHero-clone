@@ -1,11 +1,11 @@
-# SpotHero Clone
+# PPM (Pod/Parking Management)
 
-A full-stack application for finding and booking parking spots, similar to SpotHero.
+A full-stack application for managing and booking parking pods.
 
 ## Project Structure
 
 ```
-spothero_clone/
+ppm/
 ├── backend/           # Flask backend
 │   ├── app.py        # Main application file
 │   ├── models.py     # Database models
@@ -32,7 +32,7 @@ pip install -r requirements.txt
 3. Set up environment variables:
 Create a `.env` file in the backend directory with:
 ```
-DATABASE_URL=sqlite:///spothero.db
+DATABASE_URL=sqlite:///ppm.db
 JWT_SECRET_KEY=your-secret-key
 ```
 

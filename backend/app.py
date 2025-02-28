@@ -8,7 +8,7 @@ from models import db, User, ParkingSpot, Booking
 load_dotenv()
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:668866Daw!@localhost:5432/spothero'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:668866Daw!@localhost:5432/ppm'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['JWT_SECRET_KEY'] = 'your-secret-key'
 app.config['JWT_TOKEN_LOCATION'] = ['headers']
