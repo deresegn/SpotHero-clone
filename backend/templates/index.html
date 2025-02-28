@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SpotHero Clone</title>
+    <title>PPM - Pod/Parking Management</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         .hidden {
@@ -18,11 +18,66 @@
         .nav-tabs {
             margin-bottom: 20px;
         }
+        #map {
+            height: 400px;
+            width: 100%;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .map-container {
+            position: relative;
+        }
+        .search-box {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1;
+            width: 300px;
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        .logo {
+            width: 120px;
+            height: 60px;
+            margin: 20px 0;
+            display: block;
+        }
+        .app-header {
+            text-align: left;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logout-btn {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: none;
+        }
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+        .logout-btn.visible {
+            display: block;
+        }
     </style>
 </head>
 <body>
     <div class="container mt-5">
-        <h1 class="mb-4">SpotHero Clone</h1>
+        <div class="app-header">
+            <img src="/static/images/ppm_logo.svg" alt="PPM Logo" class="logo">
+            <button id="logout-btn" class="logout-btn">Logout</button>
+        </div>
         
         <!-- Authentication Forms -->
         <div id="auth-section" class="mb-4">
@@ -56,219 +111,428 @@
                         <div class="mb-3">
                             <input type="password" class="form-control" placeholder="Password" required>
                         </div>
-                        <button type="submit" class="btn btn-success">Register</button>
+                        <button type="submit" class="btn btn-primary">Register</button>
                     </form>
                 </div>
             </div>
         </div>
 
-        <!-- Main App (Hidden until logged in) -->
-        <div id="app-section" class="hidden">
-            <div class="row mb-4">
-                <div class="col">
-                    <button id="logout-btn" class="btn btn-outline-danger">Logout</button>
+        <!-- Main Content (hidden until authenticated) -->
+        <div id="main-content" class="hidden">
+            <!-- Map Section -->
+            <div class="map-container mb-4">
+                <div class="search-box">
+                    <input id="location-search" type="text" class="form-control" placeholder="Search location...">
+                </div>
+                <div id="map"></div>
+            </div>
+
+            <!-- Parking Spots Section -->
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h2>Available Parking Garages</h2>
+                        <div class="input-group" style="max-width: 400px;">
+                            <input type="text" class="form-control" id="garage-search" placeholder="Search by address or location">
+                            <button class="btn btn-primary" type="button" onclick="searchLocation()">
+                                Find Parking
+                            </button>
+                        </div>
+                    </div>
+                    <div id="spots-list" class="row"></div>
+                </div>
+                <div class="col-md-4">
+                    <h2>My Bookings</h2>
+                    <div id="bookings-list"></div>
                 </div>
             </div>
 
-            <!-- Create Parking Spot Form -->
-            <div class="mb-4">
-                <h3>Add Your Parking Spot</h3>
-                <form id="create-spot-form">
-                    <div class="mb-3">
-                        <input type="text" class="form-control" placeholder="Address" required>
+            <!-- Booking Modal -->
+            <div class="modal fade" id="bookingModal" tabindex="-1">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Book Parking Spot</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="booking-form">
+                                <input type="hidden" name="spot_id" id="booking-spot-id">
+                                <div class="mb-3">
+                                    <label class="form-label">Start Time</label>
+                                    <input type="datetime-local" class="form-control" name="start_time" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">End Time</label>
+                                    <input type="datetime-local" class="form-control" name="end_time" required>
+                                </div>
+                                <div class="mb-3">
+                                    <p>Price: $<span id="booking-price">0.00</span></p>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Book Now</button>
+                            </form>
+                        </div>
                     </div>
-                    <div class="mb-3">
-                        <input type="number" class="form-control" placeholder="Price per hour" required>
-                    </div>
-                    <div class="mb-3">
-                        <textarea class="form-control" placeholder="Description"></textarea>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Add Spot</button>
-                </form>
-            </div>
-
-            <!-- Available Spots -->
-            <div class="mb-4">
-                <h3>Available Parking Spots</h3>
-                <div id="spots-list">
-                    <!-- Spots will be loaded here -->
-                </div>
-            </div>
-
-            <!-- My Bookings -->
-            <div class="mb-4">
-                <h3>My Bookings</h3>
-                <div id="bookings-list">
-                    <!-- Bookings will be loaded here -->
                 </div>
             </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script async defer
+        src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC5v1bScBvuCeYzGby5iwUZflXm1-d8qDc&libraries=places&callback=initMap">
+    </script>
     <script>
-        let token = null;
+        let map;
+        let markers = [];
+        let token = localStorage.getItem('auth_token'); // Get token from localStorage
+        let activeInfoWindow;
+
+        // Check if user is already logged in
+        window.addEventListener('DOMContentLoaded', async () => {
+            if (token) {
+                try {
+                    // Verify token is still valid
+                    const response = await fetch('/api/verify_token', {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    if (response.ok) {
+                        document.getElementById('auth-section').classList.add('hidden');
+                        document.getElementById('main-content').classList.remove('hidden');
+                        document.getElementById('logout-btn').classList.add('visible');
+                        await loadSpots();
+                        await loadBookings();
+                        await initializeMapIfNeeded();
+                    } else {
+                        // Token invalid, clear it
+                        localStorage.removeItem('auth_token');
+                        token = null;
+                    }
+                } catch (error) {
+                    console.error('Token verification failed:', error);
+                    localStorage.removeItem('auth_token');
+                    token = null;
+                }
+            }
+        });
 
         // Helper function to make API calls
         async function apiCall(endpoint, method = 'GET', data = null) {
             const headers = {
                 'Content-Type': 'application/json'
             };
+            
             if (token) {
                 headers['Authorization'] = `Bearer ${token}`;
             }
 
-            const options = {
-                method,
-                headers
-            };
-            if (data) {
-                options.body = JSON.stringify(data);
-            }
+            try {
+                const response = await fetch(endpoint.startsWith('/') ? endpoint : `/api/${endpoint}`, {
+                    method,
+                    headers,
+                    body: data ? JSON.stringify(data) : null
+                });
 
-            const response = await fetch(`/api/${endpoint}`, options);
-            return await response.json();
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || 'API request failed');
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error('API Error:', error);
+                throw error;
+            }
+        }
+
+        // Login function
+        async function login() {
+            const form = document.getElementById('login-form');
+            const email = form.querySelector('input[type="email"]').value;
+            const password = form.querySelector('input[type="password"]').value;
+
+            try {
+                const response = await apiCall('/api/login', 'POST', { email, password });
+                if (response.access_token) {
+                    token = response.access_token;
+                    localStorage.setItem('auth_token', token);
+                    document.getElementById('auth-section').classList.add('hidden');
+                    document.getElementById('main-content').classList.remove('hidden');
+                    document.getElementById('logout-btn').classList.add('visible');
+                    await loadSpots();
+                    await loadBookings();
+                    initializeMapIfNeeded();
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                alert('Login failed: ' + (error.message || 'Invalid credentials'));
+            }
+        }
+
+        let mapInitialized = false;
+        
+        async function initializeMapIfNeeded() {
+            if (!mapInitialized && map) {
+                mapInitialized = true;
+                google.maps.event.trigger(map, 'resize');
+            }
+        }
+
+        // Initialize map
+        function initMap() {
+            const defaultLocation = { lat: 37.7749, lng: -122.4194 }; // San Francisco
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: defaultLocation,
+                zoom: 13,
+                styles: [
+                    {
+                        featureType: "poi",
+                        elementType: "labels",
+                        stylers: [{ visibility: "off" }]
+                    }
+                ]
+            });
+
+            // Initialize the Places service
+            const input = document.getElementById('location-search');
+            const searchBox = new google.maps.places.SearchBox(input);
+
+            map.addListener('bounds_changed', () => {
+                searchBox.setBounds(map.getBounds());
+            });
+
+            // Update markers when places are selected
+            searchBox.addListener('places_changed', () => {
+                const places = searchBox.getPlaces();
+                if (places.length === 0) return;
+
+                // Clear existing markers
+                markers.forEach(marker => marker.setMap(null));
+                markers = [];
+
+                const bounds = new google.maps.LatLngBounds();
+                places.forEach(place => {
+                    if (!place.geometry || !place.geometry.location) return;
+
+                    // Add marker for the selected place
+                    const marker = new google.maps.Marker({
+                        map,
+                        title: place.name,
+                        position: place.geometry.location
+                    });
+                    markers.push(marker);
+
+                    if (place.geometry.viewport) {
+                        bounds.union(place.geometry.viewport);
+                    } else {
+                        bounds.extend(place.geometry.location);
+                    }
+                });
+                map.fitBounds(bounds);
+            });
+        }
+
+        // Logout function
+        function logout() {
+            localStorage.removeItem('auth_token');
+            token = null;
+            document.getElementById('auth-section').classList.remove('hidden');
+            document.getElementById('main-content').classList.add('hidden');
+            document.getElementById('logout-btn').classList.remove('visible');
+            // Clear any existing data
+            document.getElementById('spots-list').innerHTML = '';
+            document.getElementById('bookings-list').innerHTML = '';
+            // Reset map markers if they exist
+            if (markers) {
+                markers.forEach(marker => marker.setMap(null));
+                markers = [];
+            }
         }
 
         // Authentication
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const [email, password] = e.target.querySelectorAll('input');
-            try {
-                const data = await apiCall('auth/login', 'POST', {
-                    email: email.value,
-                    password: password.value
-                });
-                if (data.access_token) {
-                    token = data.access_token;
-                    document.getElementById('auth-section').classList.add('hidden');
-                    document.getElementById('app-section').classList.remove('hidden');
-                    loadSpots();
-                    loadBookings();
-                }
-            } catch (error) {
-                alert('Login failed');
-            }
+            await login();
         });
 
         document.getElementById('register-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const [email, password] = e.target.querySelectorAll('input');
+            const form = e.target;
+            const email = form.querySelector('input[type="email"]').value;
+            const password = form.querySelector('input[type="password"]').value;
+
             try {
-                await apiCall('auth/register', 'POST', {
-                    email: email.value,
-                    password: password.value
-                });
+                await apiCall('register', 'POST', { email, password });
                 alert('Registration successful! Please login.');
+                // Switch to login tab
                 document.querySelector('[href="#login"]').click();
+                form.reset();
             } catch (error) {
-                alert('Registration failed');
+                alert('Registration failed: ' + error.message);
             }
         });
 
-        // Logout
-        document.getElementById('logout-btn').addEventListener('click', () => {
-            token = null;
-            document.getElementById('auth-section').classList.remove('hidden');
-            document.getElementById('app-section').classList.add('hidden');
-        });
-
-        // Create Parking Spot
-        document.getElementById('create-spot-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const [address, price, description] = e.target.querySelectorAll('input, textarea');
-            try {
-                await apiCall('spots', 'POST', {
-                    address: address.value,
-                    price_per_hour: parseFloat(price.value),
-                    description: description.value
-                });
-                e.target.reset();
-                loadSpots();
-            } catch (error) {
-                alert('Failed to create parking spot');
-            }
-        });
+        document.getElementById('logout-btn').addEventListener('click', logout);
 
         // Load Spots
         async function loadSpots() {
             try {
-                const spots = await apiCall('spots');
+                const garages = await apiCall('garages', 'GET');
                 const spotsList = document.getElementById('spots-list');
-                spotsList.innerHTML = spots.map(spot => `
-                    <div class="spot-card">
-                        <h4>${spot.address}</h4>
-                        <p>$${spot.price_per_hour}/hour</p>
-                        <p>${spot.description}</p>
-                        <button class="btn btn-primary book-spot-btn" data-spot-id="${spot.id}">
-                            Book Now
-                        </button>
-                    </div>
-                `).join('');
+                spotsList.innerHTML = '';
 
-                // Add booking functionality
-                spotsList.querySelectorAll('.book-spot-btn').forEach(btn => {
-                    btn.addEventListener('click', async () => {
-                        const spotId = btn.dataset.spotId;
-                        const hours = prompt('How many hours would you like to book?');
-                        if (hours) {
-                            const startTime = new Date();
-                            const endTime = new Date(startTime.getTime() + hours * 60 * 60 * 1000);
-                            try {
-                                await apiCall('bookings', 'POST', {
-                                    spot_id: parseInt(spotId),
-                                    start_time: startTime.toISOString(),
-                                    end_time: endTime.toISOString(),
-                                    hours: parseFloat(hours)
-                                });
-                                loadSpots();
-                                loadBookings();
-                            } catch (error) {
-                                alert('Booking failed');
+                // Clear existing markers
+                markers.forEach(marker => marker.setMap(null));
+                markers = [];
+
+                garages.forEach(garage => {
+                    // Add marker to map
+                    if (garage.latitude && garage.longitude) {
+                        const marker = new google.maps.Marker({
+                            position: { lat: parseFloat(garage.latitude), lng: parseFloat(garage.longitude) },
+                            map: map,
+                            title: garage.name
+                        });
+
+                        const infoWindow = new google.maps.InfoWindow({
+                            content: `
+                                <div>
+                                    <h5>${garage.name}</h5>
+                                    <p>${garage.address}</p>
+                                    <p>$${garage.price_per_hour}/hour</p>
+                                </div>
+                            `
+                        });
+
+                        marker.addListener('click', () => {
+                            if (activeInfoWindow) {
+                                activeInfoWindow.close();
                             }
-                        }
-                    });
+                            infoWindow.open(map, marker);
+                            activeInfoWindow = infoWindow;
+                        });
+
+                        markers.push(marker);
+                    }
+
+                    // Add garage card to list
+                    const card = document.createElement('div');
+                    card.className = 'col-md-6 mb-4';
+                    card.innerHTML = `
+                        <div class="spot-card">
+                            <h5>${garage.name}</h5>
+                            <p>${garage.address}</p>
+                            <p><strong>Price:</strong> $${garage.price_per_hour}/hour</p>
+                            <p><strong>Available Spots:</strong> ${garage.total_spots}</p>
+                            <button class="btn btn-primary book-btn" data-garage-id="${garage.id}">
+                                Book Now
+                            </button>
+                        </div>
+                    `;
+                    spotsList.appendChild(card);
                 });
+
+                // Center map on markers if any exist
+                if (markers.length > 0) {
+                    const bounds = new google.maps.LatLngBounds();
+                    markers.forEach(marker => bounds.extend(marker.getPosition()));
+                    map.fitBounds(bounds);
+                }
             } catch (error) {
-                console.error('Failed to load spots:', error);
+                console.error('Failed to load garages:', error);
             }
         }
 
         // Load Bookings
         async function loadBookings() {
             try {
-                const bookings = await apiCall('bookings');
-                document.getElementById('bookings-list').innerHTML = bookings.map(booking => `
-                    <div class="spot-card">
-                        <h4>Booking #${booking.id}</h4>
-                        <p>Spot ID: ${booking.spot_id}</p>
-                        <p>Start: ${new Date(booking.start_time).toLocaleString()}</p>
-                        <p>End: ${new Date(booking.end_time).toLocaleString()}</p>
-                        <p>Total Price: $${booking.total_price}</p>
-                        <p>Status: ${booking.status}</p>
-                    </div>
-                `).join('');
+                const bookings = await apiCall('bookings', 'GET');
+                const bookingsList = document.getElementById('bookings-list');
+                bookingsList.innerHTML = '';
+                
+                bookings.forEach(booking => {
+                    const bookingCard = document.createElement('div');
+                    bookingCard.className = 'card mb-3';
+                    bookingCard.innerHTML = `
+                        <div class="card-body">
+                            <h5 class="card-title">${booking.garage.name}</h5>
+                            <p class="card-text">
+                                ${booking.garage.address}<br>
+                                From: ${new Date(booking.start_time).toLocaleString()}<br>
+                                To: ${new Date(booking.end_time).toLocaleString()}<br>
+                                Total: $${booking.total_price.toFixed(2)}<br>
+                                Status: ${booking.status}
+                            </p>
+                        </div>
+                    `;
+                    bookingsList.appendChild(bookingCard);
+                });
             } catch (error) {
                 console.error('Failed to load bookings:', error);
             }
         }
 
-        // Initialize Bootstrap tabs
-        document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
-            tab.addEventListener('click', (e) => {
-                e.preventDefault();
-                document.querySelector(e.target.getAttribute('href')).classList.add('active');
-                document.querySelectorAll('.tab-pane').forEach(pane => {
-                    if (pane.id !== e.target.getAttribute('href').substring(1)) {
-                        pane.classList.remove('active');
+        // Handle booking
+        document.addEventListener('click', e => {
+            if (e.target.classList.contains('book-btn')) {
+                const spotId = e.target.dataset.garageId;
+                const pricePerHour = parseFloat(e.target.dataset.price);
+                document.getElementById('booking-spot-id').value = spotId;
+                
+                // Set min datetime to now
+                const now = new Date();
+                const minDateTime = now.toISOString().slice(0, 16);
+                document.querySelector('input[name="start_time"]').min = minDateTime;
+                document.querySelector('input[name="end_time"]').min = minDateTime;
+                
+                // Calculate price when dates change
+                const calculatePrice = () => {
+                    const start = new Date(document.querySelector('input[name="start_time"]').value);
+                    const end = new Date(document.querySelector('input[name="end_time"]').value);
+                    if (start && end && end > start) {
+                        const hours = (end - start) / (1000 * 60 * 60);
+                        const price = hours * pricePerHour;
+                        document.getElementById('booking-price').textContent = price.toFixed(2);
                     }
-                });
-                document.querySelectorAll('.nav-link').forEach(link => {
-                    link.classList.remove('active');
-                });
-                e.target.classList.add('active');
-            });
+                };
+                
+                document.querySelector('input[name="start_time"]').addEventListener('change', calculatePrice);
+                document.querySelector('input[name="end_time"]').addEventListener('change', calculatePrice);
+            }
         });
+
+        // Handle booking form submission
+        document.getElementById('booking-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            try {
+                await apiCall('bookings', 'POST', {
+                    garage_id: parseInt(formData.get('spot_id')), // Using spot_id field for garage_id
+                    start_time: formData.get('start_time'),
+                    end_time: formData.get('end_time')
+                });
+                
+                // Close modal and refresh data
+                bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
+                await loadSpots();
+                await loadBookings();
+                alert('Booking successful!');
+            } catch (error) {
+                alert('Failed to create booking: ' + (error.message || 'Unknown error'));
+                console.error('Booking error:', error);
+            }
+        });
+
+        function searchLocation() {
+            const searchInput = document.getElementById('location-search');
+            const searchQuery = searchInput.value.trim();
+            if (searchQuery) {
+                // TO DO: implement search functionality
+                console.log('Search query:', searchQuery);
+            }
+        }
     </script>
 </body>
 </html>
